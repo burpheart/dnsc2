@@ -25,10 +25,12 @@ func main() {
 			if len(str2) == 3 {
 				delete(cmdMap, str2[0])
 				data, err := base62.Decode([]byte(str2[2]))
+
 				if err == nil {
 					//log.Printf(string(data))
 				} else {
 					//log.Printf("err data :" + str2[2])
+					return
 				}
 				result := make(map[string]string)
 				value, ok := resultMap[str2[0]]
@@ -58,30 +60,7 @@ func main() {
 				}
 
 			}
-			/*
-				data, err := base62.Decode([]byte(str1[0]))
 
-				if err == nil {
-					log.Printf(string(data))
-				} else {
-					log.Printf("err data :" + str1[0])
-				}
-			*/
-			/*
-				file, err := os.Open("debug.txt")
-				if err != nil {
-					panic(err)
-				}
-				br := bufio.NewReader(file)
-
-			*/
-			//for {
-			/*content, _, c := br.ReadLine()
-			if c == io.EOF {
-				break
-			}
-
-			*/
 			for k, v := range cmdMap {
 				asw := dns.TXT{
 					Hdr: dns.RR_Header{
@@ -95,8 +74,6 @@ func main() {
 				resp.Answer = append(resp.Answer, &asw)
 			}
 
-			//}
-			//file.Close()
 		}
 		w.WriteMsg(&resp)
 	})

